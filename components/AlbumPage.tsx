@@ -18,7 +18,7 @@ interface AlbumPageProps {
   onUpdatePageBackground: (pageId: string, bgUrl: string | undefined) => void;
 }
 
-const CM_TO_PX_SCALE = 35; 
+const CM_TO_PX_SCALE = 35;
 
 interface RulerProps {
   lengthCm: number;
@@ -32,8 +32,8 @@ const Ruler: React.FC<RulerProps> = ({ lengthCm, orientation }) => {
       {ticks.map((_, i) => (
         <React.Fragment key={i}>
           <div className="absolute bg-gray-400" style={orientation === 'horizontal' ? { left: `${i * CM_TO_PX_SCALE}px`, top: 0, width: '1px', height: '8px' } : { top: `${i * CM_TO_PX_SCALE}px`, right: 0, height: '1px', width: '8px' }} />
-          {i < lengthCm && ( 
-             <span className="absolute text-[8px] text-gray-500 font-medium" style={orientation === 'horizontal' ? { left: `${i * CM_TO_PX_SCALE - 1}px`, top: '8px' } : { top: `${i * CM_TO_PX_SCALE - 6}px`, right: '12px' }}>{i}</span>
+          {i < lengthCm && (
+            <span className="absolute text-[8px] text-gray-500 font-medium" style={orientation === 'horizontal' ? { left: `${i * CM_TO_PX_SCALE - 1}px`, top: '8px' } : { top: `${i * CM_TO_PX_SCALE - 6}px`, right: '12px' }}>{i}</span>
           )}
           {i < lengthCm && (
             <div className="absolute bg-gray-300" style={orientation === 'horizontal' ? { left: `${(i + 0.5) * CM_TO_PX_SCALE}px`, top: 0, width: '1px', height: '4px' } : { top: `${(i + 0.5) * CM_TO_PX_SCALE}px`, right: 0, height: '1px', width: '4px' }} />
@@ -169,7 +169,7 @@ const EditablePhoto: React.FC<EditablePhotoProps> = ({ photo, readOnly, onUpdate
       window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('touchmove', onTouchMove); window.removeEventListener('touchend', onTouchEnd);
     };
-  }, [isDragging, isLoaded, containerSize, naturalSize, isWide, shapeBounds, getClampedPosition, onUpdate]); 
+  }, [isDragging, isLoaded, containerSize, naturalSize, isWide, shapeBounds, getClampedPosition, onUpdate]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -198,15 +198,15 @@ const EditablePhoto: React.FC<EditablePhotoProps> = ({ photo, readOnly, onUpdate
       {!readOnly && isLoaded && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-end gap-2 z-20">
           <div className="bg-black/60 backdrop-blur-sm p-1.5 rounded-lg text-white flex items-center gap-2 shadow-sm" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-             <ZoomIn className="w-3 h-3" />
-             <input type="range" min="1" max="5" step="0.1" value={transform.scale} onChange={handleZoomChange} className="w-16 h-1 bg-white/30 rounded-full appearance-none cursor-pointer" />
+            <ZoomIn className="w-3 h-3" />
+            <input type="range" min="1" max="5" step="0.1" value={transform.scale} onChange={handleZoomChange} className="w-16 h-1 bg-white/30 rounded-full appearance-none cursor-pointer" />
           </div>
-          <button onClick={(e) => { e.stopPropagation(); onUpdate({x:0,y:0,scale:1}); }} className="bg-black/60 backdrop-blur-sm p-1.5 rounded-lg text-white hover:bg-black/80 shadow-sm" onMouseDown={e => e.stopPropagation()}><RefreshCw className="w-3 h-3" /></button>
+          <button onClick={(e) => { e.stopPropagation(); onUpdate({ x: 0, y: 0, scale: 1 }); }} className="bg-black/60 backdrop-blur-sm p-1.5 rounded-lg text-white hover:bg-black/80 shadow-sm" onMouseDown={e => e.stopPropagation()}><RefreshCw className="w-3 h-3" /></button>
         </div>
       )}
       {!readOnly && isLoaded && transform.x === 0 && transform.y === 0 && transform.scale === 1 && (
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300">
-           <div className="bg-black/30 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 shadow-sm"><Move className="w-3 h-3" /> Drag to Pan</div>
+          <div className="bg-black/30 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 shadow-sm"><Move className="w-3 h-3" /> Drag to Pan</div>
         </div>
       )}
       {!readOnly && <div className="absolute inset-0 ring-inset ring-2 ring-transparent group-hover:ring-indigo-400/50 transition-all pointer-events-none z-10" />}
@@ -237,18 +237,45 @@ export const AlbumPage: React.FC<AlbumPageProps> = ({ page, settings, pageNumber
 
   useEffect(() => {
     if (!containerRef.current) return;
-    setContainerSize({ width: containerRef.current.offsetWidth, height: containerRef.current.offsetHeight });
-    const observer = new ResizeObserver((entries) => { if (entries[0]) setContainerSize({ width: entries[0].contentRect.width, height: entries[0].contentRect.height }); });
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight
+        });
+      }
+    };
+
+    updateSize();
+
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        setContainerSize({
+          width: entries[0].contentRect.width,
+          height: entries[0].contentRect.height
+        });
+      }
+    });
     observer.observe(containerRef.current);
+
+    // Also update on next frame to ensure aspect ratio is applied
+    requestAnimationFrame(updateSize);
+
     return () => observer.disconnect();
   }, []);
 
   let scale = 1;
   if (containerSize.width > 0) {
+    // In readOnly (viewer), fit within both width and height (contain)
+    if (readOnly && containerSize.height > 0) {
       const wRatio = containerSize.width / widthPx;
-      scale = readOnly && containerSize.height > 0 ? Math.max(wRatio, containerSize.height / heightPx) : wRatio;
+      const hRatio = containerSize.height / heightPx;
+      scale = Math.min(wRatio, hRatio);
+    } else {
+      // In editor, scale based on width (aspect ratio maintains height)
+      scale = containerSize.width / widthPx;
+    }
   }
-
   const contentStyle: React.CSSProperties = readOnly ? { transform: `translate(-50%, -50%) scale(${scale})`, transformOrigin: 'center center', position: 'absolute', top: '50%', left: '50%', width: widthPx, height: heightPx, boxSizing: 'border-box' } : { transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, width: widthPx, height: heightPx, boxSizing: 'border-box' };
 
   useEffect(() => { if (!page.layout) { const defaults = getLayoutsForCount(photoCount); onUpdateLayout(page.id, defaults[0]); } }, [photoCount, page.id]);
@@ -278,51 +305,59 @@ export const AlbumPage: React.FC<AlbumPageProps> = ({ page, settings, pageNumber
     <div className={`flex flex-col items-center w-full ${readOnly ? 'h-full justify-center mb-0' : 'gap-3 mb-12'}`}>
       {!readOnly && (
         <div className="flex flex-nowrap items-center justify-between w-[98%] px-3 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 overflow-x-auto gap-3">
-          <div className="flex items-center gap-2"><span className="font-bold text-gray-700 text-sm whitespace-nowrap">Page {pageNumber}</span><button onClick={() => setRefreshKey(k => k+1)} className="p-1 text-gray-400 hover:text-indigo-600"><RotateCcw className="w-3.5 h-3.5" /></button></div>
+          <div className="flex items-center gap-2"><span className="font-bold text-gray-700 text-sm whitespace-nowrap">Page {pageNumber}</span><button onClick={() => setRefreshKey(k => k + 1)} className="p-1 text-gray-400 hover:text-indigo-600"><RotateCcw className="w-3.5 h-3.5" /></button></div>
           <div className="flex items-center gap-2">
-             <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                <button onClick={() => { const ts = getLayoutsForCount(photoCount); let ni = layoutIndex - 1; if (ni < 0) ni = ts.length - 1; setLayoutIndex(ni); onUpdateLayout(page.id, ts[ni]); }} className="p-1.5 hover:bg-white rounded-md text-gray-600"><ChevronLeft className="w-4 h-4" /></button>
-                <div className="px-2 text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap"><LayoutTemplate className="w-3 h-3" /> {layoutIndex === -1 ? 'AI' : `${layoutIndex + 1}`}</div>
-                <button onClick={() => { const ts = getLayoutsForCount(photoCount); let ni = layoutIndex + 1; if (ni >= ts.length) ni = 0; setLayoutIndex(ni); onUpdateLayout(page.id, ts[ni]); }} className="p-1.5 hover:bg-white rounded-md text-gray-600"><ChevronRight className="w-4 h-4" /></button>
-             </div>
-             <button onClick={async () => { setIsGenerating(true); const l = await generateCreativeLayout(photoCount); if (l) { onUpdateLayout(page.id, l); setLayoutIndex(-1); } setIsGenerating(false); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-semibold">{isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Magic</button>
-             <label className="p-1.5 bg-gray-50 hover:bg-gray-200 text-gray-600 rounded-md cursor-pointer block"><ImagePlus className="w-4 h-4" /><input type="file" className="hidden" accept="image/*" onChange={handleLocalBgUpload} /></label>
-             {page.backgroundImage && <button onClick={() => onUpdatePageBackground(page.id, undefined)} className="bg-red-500 text-white rounded-full p-0.5"><X className="w-2 h-2" /></button>}
-             {onGenerateAiImage && <button onClick={() => onGenerateAiImage(page.id)} className="p-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-md shadow-sm"><Wand2 className="w-4 h-4" /></button>}
-             {(page.isAiCover || page.backup) && onRevertAi && <button onClick={() => onRevertAi(page.id)} className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md"><Undo2 className="w-4 h-4" /></button>}
-             {onDownloadPage && <button onClick={() => onDownloadPage(page.id, pageNumber)} className="p-1.5 border border-gray-200 rounded-md"><Download className="w-4 h-4" /></button>}
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button onClick={() => { const ts = getLayoutsForCount(photoCount); let ni = layoutIndex - 1; if (ni < 0) ni = ts.length - 1; setLayoutIndex(ni); onUpdateLayout(page.id, ts[ni]); }} className="p-1.5 hover:bg-white rounded-md text-gray-600"><ChevronLeft className="w-4 h-4" /></button>
+              <div className="px-2 text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap"><LayoutTemplate className="w-3 h-3" /> {layoutIndex === -1 ? 'AI' : `${layoutIndex + 1}`}</div>
+              <button onClick={() => { const ts = getLayoutsForCount(photoCount); let ni = layoutIndex + 1; if (ni >= ts.length) ni = 0; setLayoutIndex(ni); onUpdateLayout(page.id, ts[ni]); }} className="p-1.5 hover:bg-white rounded-md text-gray-600"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+            <button onClick={async () => { setIsGenerating(true); const l = await generateCreativeLayout(photoCount); if (l) { onUpdateLayout(page.id, l); setLayoutIndex(-1); } setIsGenerating(false); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-semibold">{isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Magic</button>
+            <label className="p-1.5 bg-gray-50 hover:bg-gray-200 text-gray-600 rounded-md cursor-pointer block"><ImagePlus className="w-4 h-4" /><input type="file" className="hidden" accept="image/*" onChange={handleLocalBgUpload} /></label>
+            {page.backgroundImage && <button onClick={() => onUpdatePageBackground(page.id, undefined)} className="bg-red-500 text-white rounded-full p-0.5"><X className="w-2 h-2" /></button>}
+            {onGenerateAiImage && <button onClick={() => onGenerateAiImage(page.id)} className="p-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-md shadow-sm"><Wand2 className="w-4 h-4" /></button>}
+            {(page.isAiCover || page.backup) && onRevertAi && <button onClick={() => onRevertAi(page.id)} className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md"><Undo2 className="w-4 h-4" /></button>}
+            {onDownloadPage && <button onClick={() => onDownloadPage(page.id, pageNumber)} className="p-1.5 border border-gray-200 rounded-md"><Download className="w-4 h-4" /></button>}
           </div>
         </div>
       )}
-      <div ref={containerRef} style={{ width: '100%', height: readOnly ? '100%' : 'auto', maxWidth: readOnly ? 'none' : `${widthPx}px`, aspectRatio: readOnly ? undefined : `${settings.pageWidthCm} / ${settings.pageHeightCm}`, position: 'relative', margin: !readOnly ? '0 0 30px 30px' : '0 auto', flexShrink: 0 }}>
-         <div style={contentStyle}>
-             {!readOnly && <><div className="absolute top-0 -left-8 h-full pr-2"><Ruler orientation="vertical" lengthCm={settings.pageHeightCm} /></div><div className="absolute -bottom-8 left-0 w-full pt-2"><Ruler orientation="horizontal" lengthCm={settings.pageWidthCm} /></div></>}
-            <div id={`album-page-${page.id}`} className={`bg-white overflow-hidden rounded-sm relative ${readOnly ? '' : 'page-shadow shadow-2xl'}`} style={{ width: `${widthPx}px`, height: `${heightPx}px`, backgroundColor: settings.pageBackgroundColor, padding: `${paddingPx}px` }}>
-               {bgImage && <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
-              {photoCount === 0 ? <div className="w-full h-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 gap-2 relative z-10"><LayoutTemplate className="w-6 h-6" /><span>Empty Page</span></div> : (
-                <div style={getGridStyle()}>
-                  {page.photos.map((photo, index) => {
-                    const layout = page.layout || getFallbackLayout(photoCount);
-                    const isCustomLayout = !!layout.customWrapperStyle;
-                    const customStyle = layout.customWrapperStyle?.[index] || {};
-                    return (
-                      <div key={photo.id} style={{ 
-                        gridArea: `img${index}`, 
-                        // Only add standard border if NOT using custom clip-paths (as custom handles it via background bleed)
-                        border: (!isCustomLayout && borderWidthPx > 0) ? `${borderWidthPx}px solid ${effectiveBorderColor}` : 'none', 
-                        backgroundColor: '#e2e8f0', 
-                        overflow: 'hidden', 
-                        position: 'relative', 
-                        ...customStyle 
-                      }} className="w-full h-full min-w-0 min-h-0">
-                        <EditablePhoto key={`${photo.id}-${refreshKey}`} photo={photo} readOnly={readOnly} shapeBounds={layout.shapeBounds?.[index]} allowUnsafePan={layout.allowUnsafePan} onUpdate={(transform) => onUpdatePhotoTransform(page.id, photo.id, transform)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-         </div>
+      <div ref={containerRef} style={{
+        width: !readOnly ? '100%' : '100%',
+        height: !readOnly ? 'auto' : '100%',
+        maxWidth: !readOnly ? `${widthPx}px` : 'none',
+        aspectRatio: !readOnly ? `${settings.pageWidthCm} / ${settings.pageHeightCm}` : undefined,
+        position: 'relative',
+        margin: !readOnly ? '0 auto 30px auto' : '0 auto',
+        flexShrink: 0
+      }}>
+        <div style={contentStyle}>
+          {!readOnly && <><div className="absolute top-0 -left-4 h-full pr-2"><Ruler orientation="vertical" lengthCm={settings.pageHeightCm} /></div><div className="absolute -bottom-4 left-0 w-full pt-2"><Ruler orientation="horizontal" lengthCm={settings.pageWidthCm} /></div></>}
+          <div id={`album-page-${page.id}`} className={`bg-white overflow-hidden rounded-sm relative ${readOnly ? '' : 'page-shadow shadow-2xl'}`} style={{ width: `${widthPx}px`, height: `${heightPx}px`, backgroundColor: settings.pageBackgroundColor, padding: `${paddingPx}px` }}>
+            {bgImage && <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
+            {photoCount === 0 ? <div className="w-full h-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 gap-2 relative z-10"><LayoutTemplate className="w-6 h-6" /><span>Empty Page</span></div> : (
+              <div style={getGridStyle()}>
+                {page.photos.map((photo, index) => {
+                  const layout = page.layout || getFallbackLayout(photoCount);
+                  const isCustomLayout = !!layout.customWrapperStyle;
+                  const customStyle = layout.customWrapperStyle?.[index] || {};
+                  return (
+                    <div key={photo.id} style={{
+                      gridArea: `img${index}`,
+                      // Only add standard border if NOT using custom clip-paths (as custom handles it via background bleed)
+                      border: (!isCustomLayout && borderWidthPx > 0) ? `${borderWidthPx}px solid ${effectiveBorderColor}` : 'none',
+                      backgroundColor: '#e2e8f0',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      ...customStyle
+                    }} className="w-full h-full min-w-0 min-h-0">
+                      <EditablePhoto key={`${photo.id}-${refreshKey}`} photo={photo} readOnly={readOnly} shapeBounds={layout.shapeBounds?.[index]} allowUnsafePan={layout.allowUnsafePan} onUpdate={(transform) => onUpdatePhotoTransform(page.id, photo.id, transform)} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       {!readOnly && <div className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mt-2">{settings.pageWidthCm}cm × {settings.pageHeightCm}cm</div>}
     </div>

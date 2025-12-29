@@ -26,23 +26,23 @@ export interface AlbumSettings {
   albumTitle?: string;
   albumTitleFont: string;
   albumTitleColor: string;
-  
+
   coverAiModel: string; // 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview'
 
   pageWidthCm: number;
   pageHeightCm: number;
   maxPhotosPerPage: number;
-  
+
   // Outer page margin/padding
   pageMarginCm: number;
   coverPageMarginCm: number; // Specific margin for front cover
   pageBackgroundColor: string;
   defaultBackgroundImage?: string; // URL for global background
-  
+
   // Photo borders/gap
   photoGapCm: number;
   coverPhotoGapCm: number; // Specific spacing for front cover
-  
+
   // Photo Borders (Individual)
   photoBorderWidthMm: number;
   photoBorderColor: string;
@@ -52,7 +52,7 @@ export interface AlbumSettings {
   // Content Frame (Border around the whole grid)
   contentBorderWidthMm: number;
   contentBorderColor: string;
-  
+
   // Shared/Saved backgrounds (simulated)
   savedBackgrounds: string[];
   savedDesignSets: DesignSet[];
@@ -62,7 +62,8 @@ export interface AlbumSettings {
 export interface User {
   id: string;
   username: string;
-  email: string; // Optional for simple auth
+  email: string;
+  photoURL?: string; // Profile picture from Google
 }
 
 export interface AlbumData {
@@ -100,7 +101,7 @@ export interface GridStyle {
   // Explicit bounding boxes for irregular shapes to calculate drag constraints
   shapeBounds?: Record<number, ShapeBounds>;
   // Deprecated: allowUnsafePan (Replaced by precise shapeBounds logic)
-  allowUnsafePan?: boolean; 
+  allowUnsafePan?: boolean;
 }
 
 export interface AlbumPageData {
@@ -129,34 +130,34 @@ export const DEFAULT_SETTINGS: AlbumSettings = {
   albumTitle: 'My Smart Album',
   albumTitleFont: '"Playfair Display", serif',
   albumTitleColor: '#FFFFFF',
-  
+
   coverAiModel: 'gemini-2.5-flash-image',
-  
+
   pageWidthCm: 20,
   pageHeightCm: 20,
   maxPhotosPerPage: 5,
-  
+
   pageMarginCm: 0,
   coverPageMarginCm: 0,
-  
+
   pageBackgroundColor: '#ffffff',
-  
+
   photoGapCm: 0.1,
   coverPhotoGapCm: 0.1,
-  
+
   photoBorderWidthMm: 0,
   photoBorderColor: '#ffffff',
-  
+
   coverPhotoBorderWidthMm: 0,
   coverPhotoBorderColor: '#ffffff',
 
   contentBorderWidthMm: 0,
   contentBorderColor: '#000000',
-  
+
   savedBackgrounds: [
-     'https://images.unsplash.com/photo-1524964645367-176bd8e151dc?q=80&w=2670&auto=format&fit=crop', // Paper texture
-     'https://images.unsplash.com/photo-1516981879613-9f5da904015f?q=80&w=2574&auto=format&fit=crop', // Wood texture
-     'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2670&auto=format&fit=crop'  // Watercolor
+    'https://images.unsplash.com/photo-1524964645367-176bd8e151dc?q=80&w=2670&auto=format&fit=crop', // Paper texture
+    'https://images.unsplash.com/photo-1516981879613-9f5da904015f?q=80&w=2574&auto=format&fit=crop', // Wood texture
+    'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2670&auto=format&fit=crop'  // Watercolor
   ],
   savedDesignSets: []
 };
