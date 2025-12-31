@@ -100,8 +100,17 @@ export interface GridStyle {
   customWrapperStyle?: Record<number, React.CSSProperties>;
   // Explicit bounding boxes for irregular shapes to calculate drag constraints
   shapeBounds?: Record<number, ShapeBounds>;
+  // For dynamic gap rendering using SVG masks (normalized 0-100 coordinates)
+  maskShapes?: MaskShape[];
   // Deprecated: allowUnsafePan (Replaced by precise shapeBounds logic)
   allowUnsafePan?: boolean;
+}
+
+export interface MaskShape {
+  type: 'rect' | 'circle' | 'polygon';
+  points?: string; // x,y x,y ... (0-100 scale)
+  cx?: number; cy?: number; r?: number;
+  x?: number; y?: number; width?: number; height?: number;
 }
 
 export interface AlbumPageData {

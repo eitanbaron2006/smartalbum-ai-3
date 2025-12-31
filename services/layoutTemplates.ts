@@ -240,11 +240,17 @@ export const LAYOUT_TEMPLATES: Record<number, GridStyle[]> = {
           aspectRatio: '1 / 1',
           borderRadius: '50%',
           zIndex: 10,
-          border: '4px solid white',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
           overflow: 'hidden'
         }
       },
+      // New Mask Shapes for logical gap rendering
+      maskShapes: [
+        { type: 'rect', x: 0, y: 0, width: 50, height: 50 }, // TL
+        { type: 'rect', x: 50, y: 0, width: 50, height: 50 }, // TR
+        { type: 'rect', x: 0, y: 50, width: 50, height: 50 }, // BL
+        { type: 'rect', x: 50, y: 50, width: 50, height: 50 }, // BR
+        { type: 'circle', cx: 50, cy: 50, r: 25 } // Overlay Circle
+      ]
     },
     // --- TEMPLATE: 5-Photo Geometric Mosaic ---
     {
@@ -252,17 +258,24 @@ export const LAYOUT_TEMPLATES: Record<number, GridStyle[]> = {
       gridTemplateRows: '1fr',
       gridTemplateAreas: '"img0"',
       customWrapperStyle: {
-        // img0: Left Solid Trapezoid
-        0: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(0% 0%, 28% 0%, 18% 100%, 0% 100%)', zIndex: 1 },
-        // img1: Center Left Solid Parallelogram
-        1: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(28.3% 0%, 53% 0%, 43% 100%, 18.3% 100%)', zIndex: 2 },
-        // img2: Center Right Solid Parallelogram
-        2: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(53.3% 0%, 78% 0%, 68% 100%, 43.3% 100%)', zIndex: 2 },
-        // img3: Right Top Trapezoid (Split 1)
-        3: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(78.3% 0%, 100% 0%, 100% 49.8%, 73.3% 49.8%)', zIndex: 1 },
-        // img4: Right Bottom Trapezoid (Split 2)
-        4: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(73.3% 50.2%, 100% 50.2%, 100% 100%, 68.3% 100%)', zIndex: 1 }
+        // img0: Left Solid Trapezoid - Ends at 28.15% (idealized touching point)
+        0: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(0% 0%, 28.15% 0%, 18.15% 100%, 0% 100%)', zIndex: 1 },
+        // img1: Center Left Solid Parallelogram - Starts 28.15, Ends 53.15
+        1: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(28.15% 0%, 53.15% 0%, 43.15% 100%, 18.15% 100%)', zIndex: 2 },
+        // img2: Center Right Solid Parallelogram - Starts 53.15, Ends 78.15
+        2: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(53.15% 0%, 78.15% 0%, 68.15% 100%, 43.15% 100%)', zIndex: 2 },
+        // img3: Right Top Trapezoid (Split 1) - Starts 78.15, horizontal split at 50%
+        3: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(78.15% 0%, 100% 0%, 100% 50%, 73.15% 50%)', zIndex: 1 },
+        // img4: Right Bottom Trapezoid (Split 2) - Starts 78.15, horizontal split at 50%
+        4: { gridArea: '1 / 1 / -1 / -1', clipPath: 'polygon(73.15% 50%, 100% 50%, 100% 100%, 68.15% 100%)', zIndex: 1 }
       },
+      maskShapes: [
+        { type: 'polygon', points: '0,0 28.15,0 18.15,100 0,100' },
+        { type: 'polygon', points: '28.15,0 53.15,0 43.15,100 18.15,100' },
+        { type: 'polygon', points: '53.15,0 78.15,0 68.15,100 43.15,100' },
+        { type: 'polygon', points: '78.15,0 100,0 100,50 73.15,50' },
+        { type: 'polygon', points: '73.15,50 100,50 100,100 68.15,100' }
+      ],
       shapeBounds: {
         0: { xPercent: 0, yPercent: 0, wPercent: 28, hPercent: 100 },
         1: { xPercent: 18.3, yPercent: 0, wPercent: 34.7, hPercent: 100 },

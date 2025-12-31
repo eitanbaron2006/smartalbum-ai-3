@@ -290,12 +290,47 @@ export const AlbumPage: React.FC<AlbumPageProps> = ({ page, settings, pageNumber
       gridTemplateColumns: layout.gridTemplateColumns,
       gridTemplateRows: layout.gridTemplateRows,
       gridTemplateAreas: layout.gridTemplateAreas,
-      // CRITICAL: When using custom clip-paths, background color acts as the border
-      backgroundColor: isCustomLayout ? effectiveBorderColor : 'transparent',
-      // We set gap to 0 for custom layouts because the clip-path already accounts for half-gap internally
-      gap: isCustomLayout ? '0px' : `${gapPx}px`,
+      // CRITICAL: We want transparent background so gaps reveal the page background
+      backgroundColor: 'transparent',
+      // We set gap to 0 only if explicitly disabled (e.g. for pure mosaics), allowing hybrid layouts (Circle Overlay) to use gap
+      gap: layout.disableGap ? '0px' : `${gapPx}px`,
       width: '100%', height: '100%', position: 'relative', zIndex: 2, boxSizing: 'border-box',
-      border: contentBorderWidthPx > 0 ? `${contentBorderWidthPx}px solid ${settings.contentBorderColor}` : 'none'
+      border: contentBorderWidthPx > 0 ? `${contentBorderWidthPx}px solid ${settings.contentBorderColor}` : 'none',
+      ...(layout.maskShapes ? (() => {
+        const strokeWidth = widthPx > 0 ? (gapPx / widthPx) * 100 : 0;
+        const svgContent = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'>
+            <defs>
+              <mask id='gapMask'>
+                <rect width='100' height='100' fill='black' />
+                <g fill='white'>
+                  ${layout.maskShapes.map(s => {
+          if (s.type === 'rect') return `<rect x='${s.x}' y='${s.y}' width='${s.width}' height='${s.height}' />`;
+          if (s.type === 'circle') return `<circle cx='${s.cx}' cy='${s.cy}' r='${s.r}' />`;
+          if (s.type === 'polygon') return `<polygon points='${s.points}' />`;
+          return '';
+        }).join('')}
+                </g>
+                <g fill='none' stroke='black' stroke-width='${strokeWidth}'>
+                   ${layout.maskShapes.map(s => {
+          if (s.type === 'rect') return `<rect x='${s.x}' y='${s.y}' width='${s.width}' height='${s.height}' />`;
+          if (s.type === 'circle') return `<circle cx='${s.cx}' cy='${s.cy}' r='${s.r}' />`;
+          if (s.type === 'polygon') return `<polygon points='${s.points}' />`;
+          return '';
+        }).join('')}
+                </g>
+              </mask>
+            </defs>
+            <rect width='100' height='100' fill='white' mask='url(%23gapMask)' />
+          </svg>`;
+        const encodedSvg = typeof window !== 'undefined' ? window.btoa(svgContent) : '';
+        const maskUrl = `url("data:image/svg+xml;base64,${encodedSvg}")`;
+        return {
+          maskImage: maskUrl,
+          WebkitMaskImage: maskUrl,
+          maskSize: '100% 100%',
+          WebkitMaskSize: '100% 100%'
+        };
+      })() : {})
     } as React.CSSProperties;
   };
 
@@ -335,20 +370,95 @@ export const AlbumPage: React.FC<AlbumPageProps> = ({ page, settings, pageNumber
           <div id={`album-page-${page.id}`} className={`bg-white overflow-hidden rounded-sm relative ${readOnly ? '' : 'page-shadow shadow-2xl'}`} style={{ width: `${widthPx}px`, height: `${heightPx}px`, backgroundColor: settings.pageBackgroundColor, padding: `${paddingPx}px` }}>
             {bgImage && <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
             {photoCount === 0 ? <div className="w-full h-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 gap-2 relative z-10"><LayoutTemplate className="w-6 h-6" /><span>Empty Page</span></div> : (
-              <div style={getGridStyle()}>
+              <div style={{ ...getGridStyle(), '--gap-sz': `${gapPx}px` } as React.CSSProperties}>
                 {page.photos.map((photo, index) => {
                   const layout = page.layout || getFallbackLayout(photoCount);
                   const isCustomLayout = !!layout.customWrapperStyle;
                   const customStyle = layout.customWrapperStyle?.[index] || {};
+
+                  // Detect Circle Overlay pattern: absolute positioned + border-radius 50%
+                  const isCircleOverlay = customStyle.position === 'absolute' && customStyle.borderRadius === '50%';
+                  // Detect if this is a background rect in a Circle Overlay layout (layout has a circle overlay and this is NOT the circle)
+                  const hasCircleOverlayInLayout = Object.values(layout.customWrapperStyle || {}).some(
+                    (s: any) => s?.position === 'absolute' && s?.borderRadius === '50%'
+                  );
+                  const isBackgroundRectInCircleOverlay = hasCircleOverlayInLayout && !isCircleOverlay && !customStyle.clipPath;
+
+                  // Calculate gap-adjusted styles
+                  let dynamicStyle: React.CSSProperties = { ...customStyle };
+
+                  if (isCircleOverlay && gapPx > 0) {
+                    // Use box-shadow to create a visual gap ring around the circle
+                    // The shadow is a solid color ring that covers the underlying rects
+                    const ringColor = bgImage ? '#ffffff' : (settings.pageBackgroundColor || '#ffffff');
+                    dynamicStyle = {
+                      ...customStyle,
+                      boxShadow: `0 0 0 ${gapPx}px ${ringColor}`,
+                    };
+                  }
+
+                  // Handle clip-path based layouts (like Geometric Mosaic - Template 5)
+                  const hasClipPath = !!customStyle.clipPath;
+                  if (hasClipPath && gapPx > 0) {
+                    // Modify the clip-path polygon to shrink each shape inward, creating gaps
+                    const originalClipPath = customStyle.clipPath as string;
+                    const halfGapPercent = ((gapPx / 2) / widthPx) * 100; // Convert to percentage
+
+                    // Parse polygon coordinates
+                    const polygonMatch = originalClipPath.match(/polygon\(([^)]+)\)/);
+                    if (polygonMatch) {
+                      const points = polygonMatch[1].split(',').map(p => {
+                        const parts = p.trim().split(/\s+/);
+                        return { x: parseFloat(parts[0]), y: parseFloat(parts[1]) };
+                      });
+
+                      // Adjust each point based on its position in the polygon
+                      // For quadrilaterals: Point 0 is top-left, Point 1 is top-right, Point 2 is bottom-right, Point 3 is bottom-left
+                      const adjusted = points.map((p, i) => {
+                        let { x, y } = p;
+
+                        // Left edge adjustment (points 0, 3 or last point)
+                        const isLeftEdge = i === 0 || i === points.length - 1;
+                        // Right edge adjustment (points 1, 2 for 4-point polygon)
+                        const isRightEdge = i === 1 || i === 2;
+                        // Top edge adjustment (first two points)
+                        const isTopEdge = i <= 1;
+                        // Bottom edge adjustment (last two points)
+                        const isBottomEdge = i >= points.length - 2;
+
+                        // Only adjust internal edges (not at 0% or 100%)
+                        if (isLeftEdge && x > 0 && x < 100) {
+                          x += halfGapPercent;
+                        }
+                        if (isRightEdge && x > 0 && x < 100) {
+                          x -= halfGapPercent;
+                        }
+                        if (isTopEdge && y > 0 && y < 100) {
+                          y += halfGapPercent;
+                        }
+                        if (isBottomEdge && y > 0 && y < 100) {
+                          y -= halfGapPercent;
+                        }
+
+                        return `${x.toFixed(2)}% ${y.toFixed(2)}%`;
+                      });
+
+                      dynamicStyle = {
+                        ...dynamicStyle,
+                        clipPath: `polygon(${adjusted.join(', ')})`,
+                      };
+                    }
+                  }
+
                   return (
                     <div key={photo.id} style={{
                       gridArea: `img${index}`,
-                      // Only add standard border if NOT using custom clip-paths (as custom handles it via background bleed)
-                      border: (!isCustomLayout && borderWidthPx > 0) ? `${borderWidthPx}px solid ${effectiveBorderColor}` : 'none',
+                      // Only add standard border if NOT using custom clip-paths AND borders are not disabled
+                      border: (!isCustomLayout && !layout.disableBorder && borderWidthPx > 0) ? `${borderWidthPx}px solid ${effectiveBorderColor}` : 'none',
                       backgroundColor: '#e2e8f0',
                       overflow: 'hidden',
                       position: 'relative',
-                      ...customStyle
+                      ...dynamicStyle
                     }} className="w-full h-full min-w-0 min-h-0">
                       <EditablePhoto key={`${photo.id}-${refreshKey}`} photo={photo} readOnly={readOnly} shapeBounds={layout.shapeBounds?.[index]} allowUnsafePan={layout.allowUnsafePan} onUpdate={(transform) => onUpdatePhotoTransform(page.id, photo.id, transform)} />
                     </div>
